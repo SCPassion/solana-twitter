@@ -21,10 +21,10 @@ pub mod solana_twitter {
         let author = &mut ctx.accounts.author;
         let clock = Clock::get().unwrap();
 
-        if topic.chars().count() > MAX_TOPIC_LENGTH {
+        if topic.chars().count() > MAX_TOPIC_LENGTH_CHARS {
             return Err(ErrorCode::TopicTooLong.into());
         }
-        if content.chars().count() > MAX_CONTENT_LENGTH {
+        if content.chars().count() > MAX_CONTENT_LENGTH_CHARS {
             return Err(ErrorCode::ContentTooLong.into());
         }
 
@@ -41,6 +41,7 @@ pub mod solana_twitter {
 #[derive(Accounts)]
 pub struct SendTweet<'info> {
     #[account(init, payer = author, space = Tweet::LEN)]
+    // deriving init, meaning that tweet is a signer
     pub tweet: Account<'info, Tweet>, // This is the tweet account that will be created and stored in the blockchain.
     #[account(mut)] // This is the payer account, so must be mutable.
     pub author: Signer<'info>, // This is the wallet sending and signing the transaction.
@@ -60,14 +61,15 @@ const DISCRIMINATOR_LENGTH: usize = 8;
 const PUBKEY_LENGTH: usize = 32;
 const TIMESTAMP_LENGTH: usize = 8;
 const STRING_LENGTH_PREFIX: usize = 4; //
-const MAX_TOPIC_LENGTH: usize = 50 * 4;
-const MAX_CONTENT_LENGTH: usize = 280 * 4;
-
+const MAX_TOPIC_LENGTH_BYTES: usize = 50 * 4;
+const MAX_TOPIC_LENGTH_CHARS: usize = 50;
+const MAX_CONTENT_LENGTH_BYTES: usize = 280 * 4;
+const MAX_CONTENT_LENGTH_CHARS: usize = 280;
 // implement Tweet length, later can be accessed as Tweet::LEN
 impl Tweet {
     const LEN: usize = DISCRIMINATOR_LENGTH
         + PUBKEY_LENGTH
         + TIMESTAMP_LENGTH
-        + STRING_LENGTH_PREFIX + MAX_TOPIC_LENGTH // prefix for topic length + topic length
-        + STRING_LENGTH_PREFIX + MAX_CONTENT_LENGTH; // prefix for content length + content length
+        + STRING_LENGTH_PREFIX + MAX_TOPIC_LENGTH_BYTES // prefix for topic length + topic length
+        + STRING_LENGTH_PREFIX + MAX_CONTENT_LENGTH_BYTES; // prefix for content length + content length
 }
