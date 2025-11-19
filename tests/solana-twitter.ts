@@ -3,6 +3,7 @@ import { Program } from "@coral-xyz/anchor";
 import { SolanaTwitter } from "../target/types/solana_twitter";
 import * as assert from "assert";
 import { LAMPORTS_PER_SOL } from "@solana/web3.js";
+import * as bs58 from "bs58";
 
 // use anchor test: to start the test by a new empty ledger
 // Aka, it starts a fresh local solana validator for each test run
@@ -99,7 +100,7 @@ describe("solana-twitter", () => {
     );
 
     await program.methods
-      .sendTweet("Hello topic", "From another author")
+      .sendTweet("veganism", "From another author")
       .accounts({
         tweet: tweet.publicKey,
         author: otherAuthor.publicKey,
@@ -113,7 +114,7 @@ describe("solana-twitter", () => {
       tweetAccount.author.toBase58(),
       otherAuthor.publicKey.toBase58()
     );
-    assert.equal(tweetAccount.topic, "Hello topic");
+    assert.equal(tweetAccount.topic, "veganism");
     assert.equal(tweetAccount.content, "From another author");
     assert.ok(tweetAccount.timestamp); // ensure timestamp is not empty
   });
@@ -180,14 +181,14 @@ describe("solana-twitter", () => {
     // we sent 3 tweets in the previous tests, so we expect 3 tweets in the array
 
     // Log each tweet to see which ones exist
-    tweets.forEach((tweet, index) => {
-      console.log(`Tweet ${index + 1}:`, {
-        publicKey: tweet.publicKey.toBase58(),
-        author: tweet.account.author.toBase58(),
-        topic: tweet.account.topic,
-        content: tweet.account.content.substring(0, 30) + "...",
-      });
-    });
+    // tweets.forEach((tweet, index) => {
+    //   console.log(`Tweet ${index + 1}:`, {
+    //     publicKey: tweet.publicKey.toBase58(),
+    //     author: tweet.account.author.toBase58(),
+    //     topic: tweet.account.topic,
+    //     content: tweet.account.content.substring(0, 30) + "...",
+    //   });
+    // });
     assert.equal(tweets.length, 3);
   });
 
@@ -209,6 +210,28 @@ describe("solana-twitter", () => {
         (tweet) =>
           tweet.account.author.toBase58() === authorPublicKey.toBase58()
       )
+    );
+  });
+
+  it("can filter tweets by topics", async () => {
+    const tweetAccounts = await program.account.tweet.all([
+      {
+        memcmp: {
+          offset:
+            8 + // discriminator
+            32 + // author public key
+            8 + // timestamp
+            4, // topic length prefix
+          bytes: bs58.encode(Buffer.from("veganism")), // convert our string to a buffer then encode it to base58
+        },
+      },
+    ]);
+
+    assert.equal(tweetAccounts.length, 2);
+    assert.ok(
+      tweetAccounts.every((tweetAccount) => {
+        return tweetAccount.account.topic === "veganism";
+      })
     );
   });
 });
